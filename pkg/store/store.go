@@ -6,6 +6,7 @@ import (
 
 const (
 	ROOM_STATUS_WAITING = 0
+	ROOM_STATUS_IN_GAME = 1
 
 	// 用户状态
 	PLAYER_STATUS_PENDING = 0
@@ -16,6 +17,7 @@ type Player struct {
 	Name      string `json:"name"`
 	RoleIndex int    `json:"roleIndex"`
 	Status    int    `json:"status"`
+	IsMaster  int    `json:"isMaster"`
 }
 type Room struct {
 	Id          string    `json:"id"`
@@ -38,7 +40,7 @@ func CreateRoom(roomName string, username string) *Room {
 		Id:   uuid.New().String(),
 		Name: roomName,
 		Players: []*Player{
-			&Player{Name: username},
+			&Player{Name: username, IsMaster: true, Status: PLAYER_STATUS_PENDING},
 		},
 		TotalPlayer: 4,
 		Status:      ROOM_STATUS_WAITING,
