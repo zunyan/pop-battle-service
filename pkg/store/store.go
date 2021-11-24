@@ -17,7 +17,7 @@ type Player struct {
 	Name      string `json:"name"`
 	RoleIndex int    `json:"roleIndex"`
 	Status    int    `json:"status"`
-	IsMaster  int    `json:"isMaster"`
+	IsMaster  bool   `json:"isMaster"`
 }
 type Room struct {
 	Id          string    `json:"id"`
