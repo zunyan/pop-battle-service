@@ -82,7 +82,6 @@ func main() {
 		username := urlQuery.Get("username")
 
 		room := store.CreateRoom(roomName, username)
-
 		fmt.Println(username + "创建了房间" + roomName)
 		server.BroadcastToNamespace("/hall", "message", username+"创建了房间"+roomName)
 		return room
@@ -95,25 +94,27 @@ func main() {
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
-		room, exist := store.RoomListMap[roomId]
-		fmt.Println(url, username, roomId)
-		if !exist {
-			return errors.New("无效的房间号")
+
+		room, err := store.JoinRoom(roomId, username)
+		if err != nil {
+			return err
 		}
 
 		s.Join(roomId)
 		server.BroadcastToRoom("/room", roomId, "message", username+"进入了房间 "+room.Name)
+		fmt.Println(username, "加入房间，当前房间人数", len(room.Players))
 		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 		return nil
 	})
 
 	// 选择角色
-	server.OnEvent("/room", "choosePlayer", func(s socketio.Conn, roleIndex int) error {
+	server.OnEvent("/room", "choosePlayer", func(s socketio.Conn, role string) error {
+
 		url := s.URL()
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
-
+		fmt.Println(username, "更换角色")
 		var pleyer *store.Player
 		for _, temp := range store.RoomListMap[roomId].Players {
 			if temp.Name == username {
@@ -125,15 +126,15 @@ func main() {
 		if pleyer.Name == "" {
 			return errors.New("无效的用户")
 		}
-
-		pleyer.RoleIndex = roleIndex
+		fmt.Println(username, pleyer.Role, role)
+		pleyer.Role = role
 		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 
 		return nil
 	})
 
 	// 准备
-	server.OnEvent("/room", "ready", func(s socketio.Conn, roleIndex int) error {
+	server.OnEvent("/room", "ready", func(s socketio.Conn, role string) error {
 		url := s.URL()
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")

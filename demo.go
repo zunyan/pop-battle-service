@@ -1,1 +1,0 @@
-players:[{"name":"p1","status"},{"name":"p2"},{"name":"p3"},{"name":"p4"}]
