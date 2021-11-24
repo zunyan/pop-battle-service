@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"pop-battle-service/pkg/store"
 
-	"github.com/google/uuid"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
 	"github.com/googollee/go-socket.io/engineio/transport"
@@ -18,30 +18,12 @@ var allowOriginFunc = func(r *http.Request) bool {
 	return true
 }
 
-const (
-	ROOM_STATUS_PENDING = 0
-
-	// 用户状态
-	PLAYER_STATUS_PENDING = 0
-	PLAYER_STATUS_READY   = 1
-)
-
-type Player struct {
-	Name      string `json:"name"`
-	RoleIndex int    `json:"roleIndex"`
-	Status    int    `json:"status"`
-}
-type Room struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	Players     []*Player `json:"players"`
-	TotalPlayer int       `json:"totalPlayer"`
-	Status      int       `json:"status"`
-}
-
 type SocketACK bool
 
 func main() {
+
+	store.Init()
+
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
@@ -66,9 +48,6 @@ func main() {
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {})
 
 	//大厅
-	roomList := []*Room{}
-	roomListMap := map[string]*Room{}
-
 	// 进入大厅时进行处理
 	server.OnConnect("/hall", func(s socketio.Conn) error {
 		url := s.URL()
@@ -92,26 +71,18 @@ func main() {
 	})
 
 	// 获取房间列表
-	server.OnEvent("/hall", "getRoomList", func(s socketio.Conn, msg string) []*Room {
-		return roomList
+	server.OnEvent("/hall", "getRoomList", func(s socketio.Conn, msg string) []*store.Room {
+		return store.RoomList
 	})
 
 	// 创建房间
-	server.OnEvent("/hall", "createRoom", func(s socketio.Conn, roomName string) Room {
+	server.OnEvent("/hall", "createRoom", func(s socketio.Conn, roomName string) *store.Room {
 		url := s.URL()
 		urlQuery := url.Query()
 		username := urlQuery.Get("username")
-		room := Room{
-			Id:   uuid.New().String(),
-			Name: roomName,
-			Players: []*Player{
-				&Player{Name: username},
-			},
-			TotalPlayer: 4,
-			Status:      ROOM_STATUS_PENDING,
-		}
-		roomList = append(roomList, &room)
-		roomListMap[room.Id] = &room
+
+		room := store.CreateRoom(roomName, username)
+
 		fmt.Println(username + "创建了房间" + roomName)
 		server.BroadcastToNamespace("/hall", "message", username+"创建了房间"+roomName)
 		return room
@@ -124,7 +95,7 @@ func main() {
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
-		room, exist := roomListMap[roomId]
+		room, exist := store.RoomListMap[roomId]
 		fmt.Println(url, username, roomId)
 		if !exist {
 			return errors.New("无效的房间号")
@@ -132,7 +103,7 @@ func main() {
 
 		s.Join(roomId)
 		server.BroadcastToRoom("/room", roomId, "message", username+"进入了房间 "+room.Name)
-		server.BroadcastToRoom("/room", roomId, "sync", roomListMap[roomId])
+		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 		return nil
 	})
 
@@ -143,8 +114,8 @@ func main() {
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
 
-		var pleyer *Player
-		for _, temp := range roomListMap[roomId].Players {
+		var pleyer *store.Player
+		for _, temp := range store.RoomListMap[roomId].Players {
 			if temp.Name == username {
 				pleyer = temp
 				break
@@ -156,7 +127,7 @@ func main() {
 		}
 
 		pleyer.RoleIndex = roleIndex
-		server.BroadcastToRoom("/room", roomId, "sync", roomListMap[roomId])
+		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 
 		return nil
 	})
@@ -168,8 +139,8 @@ func main() {
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
 
-		var pleyer *Player
-		for _, temp := range roomListMap[roomId].Players {
+		var pleyer *store.Player
+		for _, temp := range store.RoomListMap[roomId].Players {
 			if temp.Name == username {
 				pleyer = temp
 				break
@@ -180,8 +151,8 @@ func main() {
 			return errors.New("无效的用户")
 		}
 
-		pleyer.Status = PLAYER_STATUS_READY
-		server.BroadcastToRoom("/room", roomId, "sync", roomListMap[roomId])
+		pleyer.Status = store.PLAYER_STATUS_READY
+		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 
 		return nil
 	})
@@ -191,14 +162,14 @@ func main() {
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
-		room, exist := roomListMap[roomId]
+		room, exist := store.RoomListMap[roomId]
 		if exist {
 			roomName := room.Name
 			s.Leave(roomId)
-			server.BroadcastToRoom("/room", roomId, "sync", roomListMap[roomId])
+			server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 			server.BroadcastToRoom("/room", roomId, "message", username+"离开了房间"+roomName)
 			fmt.Println(username + "离开了房间" + roomName)
-			newPlayers := []*Player{}
+			newPlayers := []*store.Player{}
 			for _, v := range room.Players {
 				if v.Name != username {
 					newPlayers = append(newPlayers, v)
@@ -210,8 +181,16 @@ func main() {
 			if len(room.Players) == 0 {
 				fmt.Println(roomName, "房间人数不足，自动解散")
 				// clear room
+				newRooms := []*store.Room{}
+				for _, v := range store.RoomList {
+					if v != room {
+						newRooms = append(newRooms, v)
+					}
+				}
+				store.RoomList = newRooms
+				delete(store.RoomListMap, roomId)
 			} else {
-				server.BroadcastToRoom("/room", roomId, "sync", roomListMap[roomId])
+				server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 			}
 		}
 	})
