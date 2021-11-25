@@ -73,7 +73,14 @@ type TGamePlayer struct {
 	Bubbles    int               `json:"bubbles"`
 	MoveTarget string            `json:"moveTarget"`
 }
+
+type TGameBubble struct {
+	Gridx int `json:"gridX"`
+	Gridy int `json:"gridY"`
+	Power int `json:"power"`
+}
 type TGameInfo struct {
 	Props   []*TGameBox    `json:"props"`
 	Players []*TGamePlayer `json:"players"`
+	Bubbles []*TGameBubble `json:"bubbles"`
 }

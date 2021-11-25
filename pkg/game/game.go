@@ -64,6 +64,26 @@ func link(server *socketio.Server) {
 		server.BroadcastToRoom("/game", roomId, "sync", game)
 	})
 
+	server.OnEvent("/game", "putBubbles", func(s socketio.Conn, props typings.TGameBubble) {
+		url := s.URL()
+		urlQuery := url.Query()
+		roomId := urlQuery.Get("roomId")
+		// username := urlQuery.Get("username")
+
+		game, exist := gameMap[roomId]
+		if !exist {
+			return
+		}
+
+		game.Bubbles = append(game.Bubbles, &typings.TGameBubble{
+			Gridx: props.Gridx,
+			Gridy: props.Gridy,
+			Power: props.Power,
+		})
+
+		server.BroadcastToRoom("/game", roomId, "sync", game)
+	})
+
 }
 
 func CreateGame(room *typings.Room) {
@@ -93,6 +113,7 @@ func CreateGame(room *typings.Room) {
 	gameInfo := &typings.TGameInfo{
 		Props:   boxs,
 		Players: players,
+		Bubbles: []*typings.TGameBubble{},
 	}
 
 	gameMap[room.Id] = gameInfo
