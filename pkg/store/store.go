@@ -55,17 +55,17 @@ func FindPlayerInRoom(room *typings.Room, username string) *typings.Player {
 
 func JoinRoom(roomId string, username string) (*typings.Room, error) {
 	if !HasRoom(roomId) {
-		return nil, errors.New("无效的房间号")
+		return nil, errors.New("无效的房间号:" + roomId)
 	}
 
 	room := RoomListMap[roomId]
 
 	if room.TotalPlayer <= len(room.Players) {
-		return nil, errors.New("房间已经满人")
+		return nil, errors.New(room.Name + "房间已经满人")
 	}
 
 	if FindPlayerInRoom(room, username) != nil {
-		fmt.Println("玩家已经存在与该房间", room.Name, username)
+		fmt.Printf("玩家%v已经存在于%v房间\n", username, room.Name)
 		return room, nil
 	}
 

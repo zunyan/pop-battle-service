@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"pop-battle-service/pkg/game"
 	"pop-battle-service/pkg/hall"
 	"pop-battle-service/pkg/room"
@@ -25,7 +25,7 @@ type SocketACK bool
 func main() {
 
 	store.Init()
-
+	logger := log.New(os.Stdout, "<main>", log.Lshortfile|log.Ldate|log.Ltime)
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
@@ -42,7 +42,7 @@ func main() {
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {})
 	server.OnError("/", func(s socketio.Conn, e error) {
 		s.Close()
-		fmt.Println("meet error:", e)
+		logger.Println("meet error:", e)
 	})
 
 	hall.LinkRouter(server) //大厅
