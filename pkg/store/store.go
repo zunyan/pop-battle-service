@@ -93,6 +93,10 @@ func JoinRoom(roomId string, username string) (*Room, error) {
 		return room, nil
 	}
 
+	if room.Status == ROOM_STATUS_IN_GAME {
+		return nil, errors.New("游戏进行中，无法加入")
+	}
+
 	player := &Player{
 		Name:   username,
 		Status: PLAYER_STATUS_PENDING,
