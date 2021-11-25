@@ -3,56 +3,32 @@ package store
 import (
 	"errors"
 	"fmt"
+	"pop-battle-service/pkg/typings"
 
 	"github.com/google/uuid"
 )
 
-const (
-	ROOM_STATUS_WAITING = 0
-	ROOM_STATUS_IN_GAME = 1
-
-	// 用户状态
-	PLAYER_STATUS_PENDING = 0
-	PLAYER_STATUS_READY   = 1
-)
-const (
-	ROLE_MARID = "role_marid"
-	ROLE_BUZZI = "role_buzzi"
-	ROLE_DAO   = "role_dao"
-	ROLE_CAPPI = "role_cappi"
-)
-
-type Player struct {
-	Name     string `json:"name"`
-	Role     string `json:"role"`
-	Status   int    `json:"status"`
-	IsMaster bool   `json:"isMaster"`
-}
-type Room struct {
-	Id          string    `json:"id"`
-	Name        string    `json:"name"`
-	Players     []*Player `json:"players"`
-	TotalPlayer int       `json:"totalPlayer"`
-	Status      int       `json:"status"`
-}
-
-var RoomList []*Room
-var RoomListMap map[string]*Room
+var RoomList []*typings.Room
+var RoomListMap map[string]*typings.Room
 
 func Init() {
-	RoomList = []*Room{}
-	RoomListMap = map[string]*Room{}
+	RoomList = []*typings.Room{}
+	RoomListMap = map[string]*typings.Room{}
 }
 
-func CreateRoom(roomName string, username string) *Room {
-	room := &Room{
-		Id:   uuid.New().String(),
-		Name: roomName,
-		Players: []*Player{
-			&Player{Name: username, IsMaster: true, Status: PLAYER_STATUS_PENDING, Role: ROLE_MARID},
-		},
+func CreateRoom(roomName string, username string) *typings.Room {
+	player := &typings.Player{
+		Name:     username,
+		IsMaster: true,
+		Status:   typings.PLAYER_STATUS_PENDING,
+		Role:     typings.ROLE_MARID,
+	}
+	room := &typings.Room{
+		Id:          uuid.New().String(),
+		Name:        roomName,
+		Players:     []*typings.Player{player},
 		TotalPlayer: 4,
-		Status:      ROOM_STATUS_WAITING,
+		Status:      typings.ROOM_STATUS_WAITING,
 	}
 	RoomList = append(RoomList, room)
 	RoomListMap[room.Id] = room
@@ -65,8 +41,8 @@ func HasRoom(roomId string) bool {
 	return exist
 }
 
-func FindPlayerInRoom(room *Room, username string) *Player {
-	var player *Player
+func FindPlayerInRoom(room *typings.Room, username string) *typings.Player {
+	var player *typings.Player
 	for _, v := range room.Players {
 		if v.Name == username {
 			player = v
@@ -77,7 +53,7 @@ func FindPlayerInRoom(room *Room, username string) *Player {
 	return player
 }
 
-func JoinRoom(roomId string, username string) (*Room, error) {
+func JoinRoom(roomId string, username string) (*typings.Room, error) {
 	if !HasRoom(roomId) {
 		return nil, errors.New("无效的房间号")
 	}
@@ -93,14 +69,14 @@ func JoinRoom(roomId string, username string) (*Room, error) {
 		return room, nil
 	}
 
-	if room.Status == ROOM_STATUS_IN_GAME {
+	if room.Status == typings.ROOM_STATUS_IN_GAME {
 		return nil, errors.New("游戏进行中，无法加入")
 	}
 
-	player := &Player{
+	player := &typings.Player{
 		Name:   username,
-		Status: PLAYER_STATUS_PENDING,
-		Role:   ROLE_MARID,
+		Status: typings.PLAYER_STATUS_PENDING,
+		Role:   typings.ROLE_MARID,
 	}
 
 	room.Players = append(room.Players, player)
