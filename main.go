@@ -154,9 +154,30 @@ func main() {
 			return errors.New("无效的用户")
 		}
 
-		pleyer.Status = store.PLAYER_STATUS_READY
+		if pleyer.Status == store.PLAYER_STATUS_READY {
+			pleyer.Status = store.PLAYER_STATUS_PENDING
+		} else {
+			pleyer.Status = store.PLAYER_STATUS_READY
+		}
 		server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
+		return nil
+	})
 
+	server.OnEvent("/room", "start", func(s socketio.Conn, role string) error {
+		url := s.URL()
+		urlQuery := url.Query()
+		roomId := urlQuery.Get("roomId")
+		if !store.HasRoom(roomId) {
+			return errors.New("房间不存在")
+		}
+
+		room := store.RoomListMap[roomId]
+		if len(room.Players) == 1 {
+			return errors.New("人数不足无法开始")
+		}
+
+		fmt.Println("开始游戏", room.Name)
+		room.Status = store.ROOM_STATUS_IN_GAME
 		return nil
 	})
 
@@ -173,9 +194,12 @@ func main() {
 			server.BroadcastToRoom("/room", roomId, "message", username+"离开了房间"+roomName)
 			fmt.Println(username + "离开了房间" + roomName)
 			newPlayers := []*store.Player{}
+			var leavePlayer *store.Player
 			for _, v := range room.Players {
 				if v.Name != username {
 					newPlayers = append(newPlayers, v)
+				} else {
+					leavePlayer = v
 				}
 			}
 
@@ -192,9 +216,16 @@ func main() {
 				}
 				store.RoomList = newRooms
 				delete(store.RoomListMap, roomId)
-			} else {
-				server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
+
+				return
 			}
+
+			if leavePlayer != nil && leavePlayer.IsMaster {
+				// 房主离开，自动票选下一个人作为房主
+				room.Players[0].IsMaster = true
+			}
+
+			server.BroadcastToRoom("/room", roomId, "sync", store.RoomListMap[roomId])
 		}
 	})
 
