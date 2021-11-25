@@ -3,6 +3,7 @@ package room
 import (
 	"errors"
 	"fmt"
+	"pop-battle-service/pkg/game"
 	"pop-battle-service/pkg/store"
 	"pop-battle-service/pkg/typings"
 
@@ -100,6 +101,7 @@ func LinkRouter(server *socketio.Server) {
 
 		fmt.Println("开始游戏", room.Name)
 		room.Status = typings.ROOM_STATUS_IN_GAME
+		game.CreateGame(room)
 		server.BroadcastToRoom("/room", roomId, "gameStart", room)
 		return nil
 	})

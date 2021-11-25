@@ -29,33 +29,51 @@ type Room struct {
 	Status      int       `json:"status"`
 }
 
-// TGameProp
-type TGameProp uint
-
+// TGamePropEnum
 const (
-	GAME_PROPS_SHOSE   = 1
-	GAME_PROPS_LOTION  = 2
-	GAME_PROPS_BUBBLES = 3
+	TGamePropEnum_NONE    = 0
+	TGamePropEnum_SHOSE   = 1
+	TGamePropEnum_LOTION  = 2
+	TGamePropEnum_BUBBLES = 3
 )
+
+type TGamePropEnum uint
+
+type TGameBox struct {
+	Gridx  int           `json:"gridX"`
+	Gridy  int           `json:"gridY"`
+	Status bool          `json:"status"`
+	Props  TGamePropEnum `json:"props"`
+}
 
 // TGamePlayerStatus
 type TGamePlayerStatus = uint
 
 const (
-	GAME_PROPS_ALIVE = 1
-	GAME_PROPS_DEAD  = 2
+	TGamePlayerStatus_ALIVE = 1
+	TGamePlayerStatus_DEAD  = 2
+)
+const (
+	TGamePlayerMoveTarget_Left  = "Left"
+	TGamePlayerMoveTarget_Right = "Right"
+	TGamePlayerMoveTarget_Up    = "Up"
+	TGamePlayerMoveTarget_Down  = "Down"
+	TGamePlayerMoveTarget_None  = "None"
 )
 
 type TGamePlayer struct {
-	Gridx   int               `json:"gridx"`
-	Gridy   int               `json:"gridy"`
-	Name    string            `json:"name"`
-	Status  TGamePlayerStatus `json:"status"`
-	Speed   int               `json:"speed"`
-	Power   int               `json:"power"`
-	Bubbles int               `json:"bubbles"`
+	X          int               `json:"x"`
+	Y          int               `json:"y"`
+	Gridx      int               `json:"gridX"`
+	Gridy      int               `json:"gridY"`
+	Name       string            `json:"name"`
+	Status     TGamePlayerStatus `json:"status"`
+	Speed      int               `json:"speed"`
+	Power      int               `json:"power"`
+	Bubbles    int               `json:"bubbles"`
+	MoveTarget string            `json:"moveTarget"`
 }
 type TGameInfo struct {
-	props   []TGameProp    `json:"props"`
-	players []*TGamePlayer `json:"players"`
+	Props   []*TGameBox    `json:"props"`
+	Players []*TGamePlayer `json:"players"`
 }

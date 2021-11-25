@@ -41,7 +41,6 @@ func main() {
 	server.OnConnect("/", func(s socketio.Conn) error { return nil })
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {})
 	server.OnError("/", func(s socketio.Conn, e error) {
-		s.Close()
 		logger.Println("meet error:", e)
 	})
 
