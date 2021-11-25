@@ -97,6 +97,8 @@ func main() {
 
 		room, err := store.JoinRoom(roomId, username)
 		if err != nil {
+			s.Leave("/room")
+			s.Close()
 			return err
 		}
 
