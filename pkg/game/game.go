@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"pop-battle-service/pkg/gamemap"
 	"pop-battle-service/pkg/typings"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 )
@@ -57,7 +58,6 @@ func link(server *socketio.Server) {
 				p.X = props.X
 				p.Y = props.Y
 				p.MoveTarget = props.MoveTarget
-
 			}
 		}
 
@@ -74,12 +74,42 @@ func link(server *socketio.Server) {
 		if !exist {
 			return
 		}
-
-		game.Bubbles = append(game.Bubbles, &typings.TGameBubble{
+		bubble := &typings.TGameBubble{
 			Gridx: props.Gridx,
 			Gridy: props.Gridy,
 			Power: props.Power,
-		})
+		}
+
+		game.Bubbles = append(game.Bubbles, bubble)
+
+		timer := time.NewTimer(time.Second * 2)
+		go func() {
+			<-timer.C
+			game, exist := gameMap[roomId]
+			if !exist {
+				return
+			}
+
+			game.Boombubbles = []*typings.TGameBoomBubble{}
+			newBubbles := []*typings.TGameBubble{}
+			for _, v := range game.Bubbles {
+				if v != bubble {
+					newBubbles = append(newBubbles, bubble)
+				} else {
+					game.Boombubbles = append(game.Boombubbles, &typings.TGameBoomBubble{
+						Gridx:  bubble.Gridx,
+						Gridy:  bubble.Gridy,
+						Left:   bubble.Power,
+						Right:  bubble.Power,
+						Top:    bubble.Power,
+						Bottom: bubble.Power,
+					})
+				}
+			}
+
+			game.Bubbles = newBubbles
+			server.BroadcastToRoom("/game", roomId, "sync", game)
+		}()
 
 		server.BroadcastToRoom("/game", roomId, "sync", game)
 	})
@@ -111,9 +141,9 @@ func CreateGame(room *typings.Room) {
 	}
 
 	gameInfo := &typings.TGameInfo{
-		Props:   boxs,
-		Players: players,
-		Bubbles: []*typings.TGameBubble{},
+		Props:       boxs,
+		Players:     players,
+		Bubbles:     []*typings.TGameBubble{}
 	}
 
 	gameMap[room.Id] = gameInfo
