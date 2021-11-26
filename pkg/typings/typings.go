@@ -1,5 +1,7 @@
 package typings
 
+import "time"
+
 const (
 	ROOM_STATUS_WAITING = 0
 	ROOM_STATUS_IN_GAME = 1
@@ -40,10 +42,11 @@ const (
 type TGamePropEnum uint
 
 type TGameBox struct {
-	Gridx  int           `json:"gridX"`
-	Gridy  int           `json:"gridY"`
-	Status bool          `json:"status"`
-	Props  TGamePropEnum `json:"props"`
+	Gridx        int           `json:"gridX"`
+	Gridy        int           `json:"gridY"`
+	Status       bool          `json:"status"` // 是否已经被炸开
+	Props        TGamePropEnum `json:"props"`  // 道具的枚举属性
+	Hasdestoryed bool
 }
 
 // TGamePlayerStatus
@@ -70,14 +73,16 @@ type TGamePlayer struct {
 	Status     TGamePlayerStatus `json:"status"`
 	Speed      int               `json:"speed"`
 	Power      int               `json:"power"`
-	Bubbles    int               `json:"bubbles"`
-	MoveTarget string            `json:"moveTarget"`
+	Bubbles    int               `json:"bubbles"`    // 最大可放置的泡泡
+	MoveTarget string            `json:"moveTarget"` // 移动方向 Left, Right, Up, Down
 }
 
 type TGameBubble struct {
-	Gridx int `json:"gridX"`
-	Gridy int `json:"gridY"`
-	Power int `json:"power"`
+	Gridx        int           `json:"gridX"`      // 泡泡X坐标
+	Gridy        int           `json:"gridY"`      // 泡泡y坐标
+	Power        int           `json:"power"`      // 泡泡威力
+	CreateTime   time.Duration `json:"createtime"` // 创建时间
+	Hasdestoryed bool          // 是否被销毁
 }
 
 type TGameBoomBubble struct {
