@@ -8,14 +8,13 @@ import (
 )
 
 type TGameMapBlock struct {
-	Floor string `json:"floor"`
-	Top   string `json:"top"`
-	Type  bool   `json:"candestory"`
-	Prop  string `json:"prop"`
+	Floor      string `json:"floor"`
+	Top        string `json:"top"`
+	CanDestory bool   `json:"candestory"`
+	Prop       string `json:"prop"`
 
-	CanDestory bool
-	Bubble     *typings.TGameBubble
-	Box        *typings.TGameBox
+	Bubble *typings.TGameBubble
+	Box    *typings.TGameBox
 }
 
 func GetGameMap() ([]*typings.TGameBox, [][]int, [][]*TGameMapBlock) {

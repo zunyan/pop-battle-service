@@ -33,7 +33,6 @@ func link(server *socketio.Server) {
 		}
 
 		s.Join(roomId)
-		s.Emit("sync", game)
 		fmt.Println(username, "加入对局")
 		server.BroadcastToRoom("/game", roomId, "sync", game.getSyncData())
 		return nil
@@ -68,7 +67,7 @@ func link(server *socketio.Server) {
 		url := s.URL()
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
-		// username := urlQuery.Get("username")
+		username := urlQuery.Get("username")
 
 		game, exist := gameMap[roomId]
 		if !exist {
@@ -80,42 +79,6 @@ func link(server *socketio.Server) {
 		}
 	})
 
-}
-
-func TimerCheck(roomId string, server *socketio.Server) {
-	game, exist := gameMap[roomId]
-	if exist {
-		// 不存在
-		go func() {
-			for {
-				if len(game.Bubbles) == 0 {
-
-					break
-				}
-				bubble := game.Bubbles[0]
-				t := bubble.CreateTime + 2000
-				fmt.Println("距离炸弹爆炸事件ms：", t-time.Duration(time.Now().UnixNano()/1e6))
-				time.Sleep(t - time.Duration(time.Now().UnixNano()/1e6))
-
-				// 移除
-				boom := &typings.TGameBoomBubble{
-					Gridx:  bubble.Gridx,
-					Gridy:  bubble.Gridy,
-					Left:   bubble.Power,
-					Right:  bubble.Power,
-					Top:    bubble.Power,
-					Bottom: bubble.Power,
-				}
-				game.Bubbles = game.Bubbles[1:]
-				booms := []*typings.TGameBoomBubble{boom}
-				// 发给客户端
-				server.BroadcastToRoom("/game", roomId, "boomBubble", booms)
-				// sync 消息
-				server.BroadcastToRoom("/game", roomId, "sync", game)
-
-			}
-		}()
-	}
 }
 
 type TGameBubbles []*typings.TGameBubble
@@ -138,6 +101,8 @@ type TGameSyncPack struct {
 func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 	todoList := []*typings.TGameBubble{bnb}
 	booms := []*typings.TGameBoomBubble{}
+	destoryBox := []*typings.TGameBox{}
+
 	fn := func(temp *typings.TGameBubble, step int, prop string) int {
 		nGridx := temp.Gridx
 		nGridy := temp.Gridy
@@ -151,6 +116,10 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 				nGridy += step
 			}
 
+			if nGridx >= len(this.GameMap[0]) || nGridx < 0 || nGridy >= len(this.GameMap) || nGridy < 0 {
+				break
+			}
+
 			nextItem := this.GameMap[nGridy][nGridx]
 
 			if !nextItem.CanDestory {
@@ -159,10 +128,11 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 
 			// 如果目标位置有炸弹
 			if nextItem.Bubble != nil {
-				// 把地图的栅格炸弹标记为nil， 防止下一个循环再次进来
-				nextItem.Bubble = nil
 				// 放到todolist里面，等待下次检查
 				todoList = append(todoList, nextItem.Bubble)
+
+				// 把地图的栅格炸弹标记为nil， 防止下一个循环再次进来
+				nextItem.Bubble = nil
 			}
 
 			// 如果这个地方有箱子
@@ -170,8 +140,10 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 			// 再循环遍历的过程中，可能多个球会同时命中一个箱子，如果此时就将箱子改为nil， 那么有下一个球就会默认此处没有障碍物，而继续往前判断
 			if nextItem.Box != nil {
 				if !nextItem.Box.Hasdestoryed {
+					fmt.Println("ddd", nextItem.Box.Gridx, nextItem.Box.Gridy)
 					nextItem.Box.Hasdestoryed = true
 					l++
+					destoryBox = append(destoryBox, nextItem.Box)
 				}
 				break
 			}
@@ -185,6 +157,7 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 	}
 
 	i := 0
+	this.GameMap[bnb.Gridy][bnb.Gridx].Bubble = nil
 	for len(todoList) > i {
 
 		temp := todoList[i]
@@ -215,12 +188,17 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 	}
 	this.Bubbles = newBubbles
 
+	for _, v := range destoryBox {
+		this.GameMap[v.Gridy][v.Gridx].Box = nil
+	}
+
 	return booms
 }
 
 func (game *Game) addBubble(gridX int, gridY int, power int) bool {
 	grid := game.GameMap[gridY][gridX]
 	if grid.Bubble != nil || grid.Box != nil {
+		fmt.Println("已经存在炸弹，或者改位置仍然有障碍物", grid.Bubble)
 		return false
 	}
 
@@ -251,7 +229,7 @@ func (game *Game) checkBubble() {
 		bubble := game.Bubbles[0]
 		t := bubble.CreateTime + 2000
 		fmt.Println("距离炸弹爆炸事件ms：", t-time.Duration(time.Now().UnixNano()/1e6))
-		time.Sleep(t - time.Duration(time.Now().UnixNano()/1e6))
+		time.Sleep(2 * time.Second) // 此处有问题
 
 		booms := game.boom(bubble)
 
@@ -268,12 +246,21 @@ func (game *Game) checkBubble() {
 
 func (game *Game) getSyncData() *TGameSyncPack {
 
+	boxs := []*typings.TGameBox{}
+
+	for _, line := range game.GameMap {
+		for _, block := range line {
+			if block.Box != nil && !block.Box.Hasdestoryed {
+				boxs = append(boxs, block.Box)
+			}
+		}
+	}
+
 	return &TGameSyncPack{
-		Props:   game.Props,
+		Props:   boxs,
 		Players: game.Players,
 		Bubbles: game.Bubbles,
 	}
-
 }
 
 func (game *Game) getPlayerByName(name string) *typings.TGamePlayer {
