@@ -10,6 +10,8 @@ const (
 	PLAYER_STATUS_PENDING = 0
 	PLAYER_STATUS_READY   = 1
 )
+
+// TGameRole
 const (
 	ROLE_MARID = "role_marid"
 	ROLE_BUZZI = "role_buzzi"
@@ -19,7 +21,7 @@ const (
 
 type Player struct {
 	Name     string `json:"name"`
-	Role     string `json:"role"`
+	Role     string `json:"role"` // 角色，目前支持的角色仅有 4个， 查看 ROLE_MARID, ROLE_BUZZI, ROLE_DAO, ROLE_CAPPI
 	Status   int    `json:"status"`
 	IsMaster bool   `json:"isMaster"`
 }
@@ -75,6 +77,7 @@ type TGamePlayer struct {
 	Power      int               `json:"power"`
 	Bubbles    int               `json:"bubbles"`    // 最大可放置的泡泡
 	MoveTarget string            `json:"moveTarget"` // 移动方向 Left, Right, Up, Down
+	Role       string            `json:"role"`       // 用户角色 查看 TGameRole 定义
 }
 
 type TGameBubble struct {
