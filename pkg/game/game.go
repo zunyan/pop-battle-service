@@ -63,7 +63,7 @@ func link(server *socketio.Server) {
 		server.BroadcastToRoom("/game", roomId, "sync", game.getSyncData())
 	})
 
-	server.OnEvent("/game", "putBubbles", func(s socketio.Conn, props typings.TGameBubble) {
+	server.OnEvent("/game", "putBubbles", func(s socketio.Conn) {
 		url := s.URL()
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
@@ -73,8 +73,8 @@ func link(server *socketio.Server) {
 		if !exist {
 			return
 		}
-
-		if game.addBubble(props.Gridx, props.Gridy, props.Power) {
+		player := game.getPlayerByName(username)
+		if player != nil && game.addBubble(player.Gridx, player.Gridy, player.Power) {
 			server.BroadcastToRoom("/game", roomId, "sync", game.getSyncData())
 		}
 	})
@@ -140,7 +140,6 @@ func (this *Game) boom(bnb *typings.TGameBubble) []*typings.TGameBoomBubble {
 			// 再循环遍历的过程中，可能多个球会同时命中一个箱子，如果此时就将箱子改为nil， 那么有下一个球就会默认此处没有障碍物，而继续往前判断
 			if nextItem.Box != nil {
 				if !nextItem.Box.Hasdestoryed {
-					fmt.Println("ddd", nextItem.Box.Gridx, nextItem.Box.Gridy)
 					nextItem.Box.Hasdestoryed = true
 					l++
 					destoryBox = append(destoryBox, nextItem.Box)
@@ -291,6 +290,7 @@ func CreateGame(room *typings.Room) {
 			X:          roles[i][0]*40 + 20,
 			Y:          roles[i][1]*40 + 20,
 			MoveTarget: typings.TGamePlayerMoveTarget_None,
+			Role:       p.Role,
 		})
 
 		i++
