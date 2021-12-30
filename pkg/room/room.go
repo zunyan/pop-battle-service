@@ -1,6 +1,7 @@
 package room
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"pop-battle-service/pkg/game"
@@ -10,6 +11,15 @@ import (
 	socketio "github.com/googollee/go-socket.io"
 )
 
+func conMysql() *sql.DB {
+	//获取连接
+	conn, err := sql.Open("mysql", "root:yunjifen@tcp(database-1.ctx76onqpva6.us-east-2.rds.amazonaws.com:3306)/database-1")
+	if nil != err {
+		fmt.Println("connect db error: ", err)
+	}
+	return conn
+}
+
 func LinkRouter(server *socketio.Server) {
 	// 加入
 	server.OnConnect("/room", func(s socketio.Conn) error {
@@ -17,7 +27,15 @@ func LinkRouter(server *socketio.Server) {
 		urlQuery := url.Query()
 		roomId := urlQuery.Get("roomId")
 		username := urlQuery.Get("username")
-
+		conn := conMysql()
+		rows, err := conn.Query("select `username` from user where username=?", username)
+		if nil != err {
+			fmt.Println("query db error: ", err.Error())
+			s.Leave("/room")
+			s.Close()
+			return err
+		}
+		fmt.Println(rows)
 		room, err := store.JoinRoom(roomId, username)
 		if err != nil {
 			s.Leave("/room")

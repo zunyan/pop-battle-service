@@ -13,4 +13,5 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	golang.org/x/sys v0.0.0-20211123173158-ef496fb156ab // indirect
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
